@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-from .cache_policies import evict_middle_with_sinks
+from cache_policies import evict_middle_with_sinks
 
 def build_keep_mask_over_time(total_steps: int, sink_size: int, window_size: int, seq_start: int) -> np.ndarray:
     """
@@ -51,7 +51,7 @@ def live_generate_and_record(model_name: str, prompt: str, sink_size: int, windo
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     dtype = getattr(torch, dtype_str)
-    tok = AutoModelForCausalLM = None  # type: ignore
+    # Initialize tokenizer and model
     tok = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=dtype)
     model.to(device); model.eval()

@@ -1,5 +1,5 @@
 import argparse
-from .viz import build_keep_mask_over_time, plot_keep_mask, live_generate_and_record
+from viz import build_keep_mask_over_time, plot_keep_mask, live_generate_and_record
 
 def main():
     ap = argparse.ArgumentParser(description="Attention Sinks toolkit")

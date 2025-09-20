@@ -36,5 +36,6 @@ def evict_middle_with_sinks(
     new_past = []
     for (k, v) in past_key_values:
         nk, nv = _slice_cache_layer(k, v, keep_idx)
+        print(nk.shape, nv.shape)
         new_past.append((nk, nv))
     return new_past, keep_idx_np

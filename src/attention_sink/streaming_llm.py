@@ -1,7 +1,7 @@
 from typing import List, Optional
 import torch
-from .cache_policies import evict_middle_with_sinks
-
+from cache_policies import evict_middle_with_sinks
+from tqdm import tqdm
 class StreamingGenerator:
     """
     Minimal streaming generator that applies the attention-sinks cache policy.
@@ -48,13 +48,15 @@ class StreamingGenerator:
         logits = outputs.logits[:, -1, :]
         generated_ids: List[int] = []
 
-        for _ in range(max_new_tokens):
+        for _ in tqdm(range(max_new_tokens)):
             if temperature > 0:
                 probs = torch.softmax(logits / max(1e-6, temperature), dim=-1)
                 if top_p < 1.0:
                     sorted_probs, sorted_idx = torch.sort(probs, descending=True)
+                    # what does this line do ?
                     cumulative = torch.cumsum(sorted_probs, dim=-1)
                     cutoff = (cumulative > top_p).float().argmax(dim=-1)
+                    # what does this line do ?
                     k = cutoff.item() + 1
                     top_idx = sorted_idx[:, :k]
                     top_probs = sorted_probs[:, :k]
@@ -72,6 +74,6 @@ class StreamingGenerator:
             outputs = self.model(input_ids=next_id, use_cache=True, past_key_values=past)
             logits = outputs.logits[:, -1, :]
             past, _ = evict_middle_with_sinks(past, self.sink_size, self.window_size)
-
+        import pdb; pdb.set_trace()
         out_ids = torch.cat([input_ids, torch.tensor([generated_ids], device=self.device)], dim=1)
         return self.tokenizer.decode(out_ids[0], skip_special_tokens=True)
