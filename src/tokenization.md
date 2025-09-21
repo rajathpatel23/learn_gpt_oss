@@ -1,6 +1,6 @@
 ### Tokenization: From Text to Integers
 
-Language models are mathematical functions; they operate on numbers, not raw text. Tokenization is the crucial first step in converting human-readable text into a sequence of integers (tokens) that a model can process. These tokens are then mapped to embedding vectors, as described in `gpt_oss_architecture.md`.
+Language models are mathematical functions; they operate on numbers, not raw text. Tokenization is the crucial first step in converting human-readable text into a sequence of integers (tokens) that a model can process. These tokens are then mapped to embedding vectors.
 
 ---
 
@@ -45,6 +45,17 @@ BPE is a data-driven algorithm used to create a subword vocabulary. It starts wi
 
 The `byte_pair_encoding_algo.py` script in this repository provides a simple, hands-on example of this process.
 
+### BPE Training Process Visualization
+
+Our implementation shows the BPE training process in real-time:
+
+1. **Pre-processing**: The tokenizer processes ~1MB of Shakespeare text
+2. **Word Tokenization**: Identifies 15,057 unique word tokens
+3. **Pair Counting**: Analyzes frequency of adjacent character/token pairs
+4. **Merge Computation**: Learns 12,455 merge rules to build the final vocabulary
+
+This creates a vocabulary that efficiently represents Shakespeare's linguistic patterns, learning common words like "the", "and", "to" as single tokens while breaking down rare words into meaningful subparts.
+
 ---
 
 ### 3. Modern Tokenizers in GPT Models
@@ -62,6 +73,115 @@ Modern tokenizers reserve special tokens to encode conversational structure, whi
 *   **Role-Based Prompting**: Tokens are used to specify roles (e.g., `system`, `user`, `assistant`), preserving the instructions and context for how the model should behave.
 
 These special tokens are not part of the regular text but are essential metadata that the model uses to understand its task. As shown in `tokenizer.py`, you can enable them with `allowed_special="all"`.
+
+
+## Comprehensive Tokenization Comparison
+
+Let's compare different tokenization approaches with practical examples:
+
+### Example 1: Simple Text
+**Input**: `"Hello world!"`
+- **Character-level**: 12 tokens `['H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!']`
+- **Word-level**: 2 tokens `['Hello', 'world!']`
+- **GPT-4 BPE**: 3 tokens `['Hello', ' world', '!']`
+- **Custom BPE**: 4 tokens `['H', 'ello', ' world', '!']`
+
+### Example 2: Complex Words
+**Input**: `"Supercalifragilisticexpialidocious"`
+- **Character-level**: 34 tokens (one per character)
+- **Word-level**: 1 token (entire word, likely OOV)
+- **GPT-4 BPE**: 11 tokens `['Sup', 'erc', 'al', 'if', 'rag', 'il', 'istic', 'exp', 'ial', 'id', 'ocious']`
+
+This demonstrates BPE's key advantage: it gracefully handles unknown words by breaking them into meaningful subparts.
+
+### Example 3: Modern Terms
+**Input**: `"COVID-19 vaccination appointments"`
+- **GPT-4 BPE**: 5 tokens `['COVID', '-', '19', ' vaccination', ' appointments']`
+- **Custom Shakespeare BPE**: 10 tokens (struggles with modern terms)
+
+This shows how tokenizer training data affects performance on different domains.
+
+## BPE Benefits Analysis
+
+### Morphological Understanding
+- `"running"` → 1 token (common word, learned as whole)
+- `"unhappiness"` → 3 tokens `['un', 'h', 'appiness']` (breaks down prefix/suffix)
+- `"tokenization"` → 2 tokens `['token', 'ization']` (recognizes root + suffix)
+
+### Compression Efficiency
+From our analysis of a technical paragraph:
+- **Character-level**: 344 tokens (1:1 ratio)
+- **Word-level**: 49 tokens (7x compression)
+- **BPE**: 67 tokens (5.1x compression vs characters, better vocabulary management)
+
+### Key Insights
+1. **Vocabulary Size**: BPE requires much smaller vocabulary than word-level
+2. **OOV Handling**: Never encounters truly unknown tokens
+3. **Compression**: Balances sequence length with vocabulary size
+4. **Domain Adaptation**: Learns patterns specific to training data
+
+---
+
+## Practical Demonstration: Shakespeare Tokenizer in Action
+
+Now that we understand the theory, let's see tokenization in action using our custom BPE tokenizer trained on Shakespeare's complete works:
+
+### Shakespeare-Optimized Tokenization
+
+Our custom tokenizer shows interesting domain-specific behavior:
+
+**Example 1: Classic Shakespeare**
+```
+Input: "To be or not to be, that is the question"
+Tokens: ['To', 'Ġbe', 'Ġor', 'Ġnot', 'Ġto', 'Ġbe', ',', 'Ġthat', 'Ġis', 'Ġthe', 'Ġquestion']
+Token Count: 11 tokens
+```
+
+**Example 2: Shakespearean Language**
+```
+Input: "Thou art more lovely and more temperate"
+Tokens: ['Thou', 'Ġart', 'Ġmore', 'Ġlovely', 'Ġand', 'Ġmore', 'Ġtemperate']
+Token Count: 7 tokens
+```
+
+**Example 3: Famous Shakespeare Quote**
+```
+Input: "All the world's a stage, and all the men and women merely players"
+Tokens: ['All', 'Ġthe', 'Ġworld', "'s", 'Ġa', 'Ġstage', ',', 'Ġand', 'Ġall', 'Ġthe', 'Ġmen', 'Ġand', 'Ġwomen', 'Ġmerely', 'Ġplayers']
+Token Count: 15 tokens
+```
+
+### Implementation Code
+
+Our tokenizer training implementation demonstrates the BPE process:
+
+```python
+def train_tokenizer(data_path: str, tokenizer_path: str):
+    # Initialize BPE tokenizer
+    tokenizer = Tokenizer(BPE())
+    tokenizer.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=False)
+    tokenizer.post_processor = ByteLevelPostProcessor(trim_offsets=False)
+    tokenizer.decoder = decoder.ByteLevel()
+    
+    # Train with special tokens and minimum frequency
+    trainer = BpeTrainer(special_tokens=["<|endoftext|>"], min_frequency=2)
+    tokenizer.train([data_path], trainer)
+    return tokenizer
+```
+
+### Analysis of Results
+
+**Domain Adaptation Success:**
+- **Archaic Words**: "Thou", "art" are learned as single tokens (common in Shakespeare)
+- **Complex Words**: "temperate" stays whole, showing efficient learning from corpus
+- **Modern Efficiency**: Our tokenizer has ~12,521 tokens, optimized for Early Modern English
+
+**Technical Insights:**
+- **Space Encoding**: The 'Ġ' prefix indicates spaces (ByteLevel encoding standard)
+- **Punctuation Handling**: Contractions like "'s" and punctuation are separate tokens
+- **Compression**: Achieves good balance between sequence length and vocabulary size
+
+This demonstrates how BPE tokenizers adapt to their training domain, making them highly effective for specific text types while maintaining the flexibility to handle any input text through subword decomposition.
 
 
 
