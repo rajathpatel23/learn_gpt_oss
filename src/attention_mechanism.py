@@ -419,7 +419,7 @@ def demonstrate_attention_mechanisms():
     print("=" * 60)
 
     # Load our trained tokenizer
-    tokenizer_path = "/Users/rajatpatel/research/learn_gpt_oss/src/tokenizer_data/tokenizer.json"
+    tokenizer_path = "tokenization/tokenizer_data/tokenizer.json"
     tokenizer = load_trained_tokenizer(tokenizer_path)
     
     # Sample text from Shakespeare
