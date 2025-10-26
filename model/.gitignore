@@ -1,0 +1,9 @@
+wandb/*
+*.pt
+*.pth
+*.pkl
+*.pt.tar
+*.pth.tar
+*.pkl.tar
+*.pt.tar.gz
+*.json
